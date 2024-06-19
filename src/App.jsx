@@ -2,6 +2,26 @@ import { useRef, useState, useEffect, useCallback } from 'react'
 import { Canvas, useFrame, useThree } from '@react-three/fiber'
 import { DragControls } from 'three/examples/jsm/controls/DragControls'
 import { OrbitControls } from '@react-three/drei'
+import { useDraggable } from './useDraggable'
+
+
+function DraggableScene(props) {
+  const boxRef = useRef();
+  const objects = [boxRef.current].filter(Boolean);  // Filter out null refs
+  useDraggable(objects);
+
+  return (
+    <mesh ref={boxRef}
+      {...props}
+    >
+      <boxGeometry args={[1, 5, 1]} />
+      <meshStandardMaterial color='royalblue' />
+    </mesh>
+  );
+}
+
+
+
 
 function Box(props) {
   // This reference gives us direct access to the THREE.Mesh object
@@ -15,7 +35,6 @@ function Box(props) {
   const [isDragging, setIsDragging] = useState(false)
 
   const onPointerDown = useCallback((event) => {
-    const controls = new DragControls(objects, camera, gl.domElement)
 
     setIsDragging(true)
     event.target.setPointerCapture(event.pointerId) // Lock the pointer to the mesh
@@ -70,25 +89,46 @@ function ControlUI(props) {
   )
 }
 
-export default function App() {
-  const [dragFlag, setDragFlag] = useState(false)
+// function App() {
+//   const [dragFlag, setDragFlag] = useState(false)
 
-  useEffect(() => {
-    console.log('dragFlag', dragFlag)
-  }, [dragFlag])
+//   useEffect(() => {
+//     console.log('dragFlag', dragFlag)
+//   }, [dragFlag])
+
+//   return (
+//     <div>
+//       <Canvas>
+//         <ambientLight intensity={Math.PI / 2} />
+//         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
+//         <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
+//         <Box position={[-1.2, 0, 0]} />
+//         <Box position={[1.2, 0, 0]} />
+//         <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
+//         <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />
+//       </Canvas>
+//       <ControlUI setDragFlag={setDragFlag} />
+//     </div>
+//   )
+// }
+
+function App() {
+
+  const [dragFlag, setDragFlag] = useState(false)
 
   return (
     <div>
-      <Canvas>
-        <ambientLight intensity={Math.PI / 2} />
-        <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
-        <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-        <Box position={[-1.2, 0, 0]} />
-        <Box position={[1.2, 0, 0]} />
-        <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
-        <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />
-      </Canvas>
       <ControlUI setDragFlag={setDragFlag} />
+    <Canvas>
+      <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
+      <ambientLight intensity={0.5} />
+      <DraggableScene position={[0, 0, 0]} />
+      <DraggableScene position={[1, 2, 3]} />
+      <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
+      <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />
+    </Canvas>
     </div>
-  )
+  );
 }
+
+export default App;
