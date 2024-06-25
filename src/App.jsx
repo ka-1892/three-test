@@ -1,17 +1,31 @@
-import { useRef, useState, useEffect, useCallback } from 'react'
-import { Canvas, useFrame, useThree } from '@react-three/fiber'
-import { DragControls } from 'three/examples/jsm/controls/DragControls'
-import { OrbitControls } from '@react-three/drei'
-import { useDraggable } from './useDraggable'
+import { useRef, useState, useEffect, useCallback, forwardRef, useMemo } from 'react';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
+import { DragControls } from 'three/examples/jsm/controls/DragControls';
+import { Environment, useGLTF, ContactShadows, OrbitControls, Html } from '@react-three/drei';
+import { useDraggable } from './useDraggable';
 
 
 function DraggableScene(props) {
   const boxRef = useRef();
   const objects = [boxRef.current].filter(Boolean);  // Filter out null refs
-  useDraggable(objects);
+  const [position, setPosition] = useState(props.position);  // Assuming you want to track the position state
+  
+  //useDraggable(objects, setPosition);
+  //useDraggable(objects);
+
+  // useEffect(()=>{
+
+  //   console.log('position:', position);
+  // },[position])
+
+  // useEffect(()=>{
+
+  //   console.log('boxRef:', boxRef);
+  // },[boxRef])
 
   return (
     <mesh ref={boxRef}
+    position={position}
       {...props}
     >
       <boxGeometry args={[1, 5, 1]} />
@@ -20,60 +34,70 @@ function DraggableScene(props) {
   );
 }
 
+const EditableHtmlElement = ({ position, content }) => {
 
 
-
-function Box(props) {
-  // This reference gives us direct access to the THREE.Mesh object
-  const ref = useRef()
-
-  const { camera, gl, scene } = useThree()
-
-  // Hold state for hovered and clicked events
-  const [hovered, hover] = useState(false)
-  const [clicked, click] = useState(false)
-  const [isDragging, setIsDragging] = useState(false)
-
-  const onPointerDown = useCallback((event) => {
-
-    setIsDragging(true)
-    event.target.setPointerCapture(event.pointerId) // Lock the pointer to the mesh
-  }, [])
-
-  const onPointerUp = useCallback((event) => {
-    setIsDragging(false)
-    event.target.releasePointerCapture(event.pointerId) // Release the pointer from the mesh
-  }, [])
-
-  const onPointerMove = useCallback(
-    (event) => {
-      if (isDragging) {
-        const [x, y] = [event.unprojectedPoint.x, event.unprojectedPoint.y]
-        ref.current.position.set(x, y, 0)
-      }
-    },
-    [isDragging]
-  )
-
-  // Subscribe this component to the render-loop, rotate the mesh every frame
-  //useFrame((state, delta) => (ref.current.rotation.x += delta))
-  // Return the view, these are regular Threejs elements expressed in JSX
+  console.log("EditableHtmlElement position:", position);
   return (
-    <mesh
-      {...props}
-      ref={ref}
-      scale={clicked ? 1.5 : 1}
-      onClick={(event) => click(!clicked)}
-      onPointerOver={(event) => (event.stopPropagation(), hover(true))}
-      onPointerOut={(event) => hover(false)}
-      onPointerDown={onPointerDown}
-      onPointerMove={onPointerMove}
-      onPointerUp={onPointerUp}>
-      <boxGeometry args={[1, 1, 1]} />
-      <meshStandardMaterial color={hovered ? 'hotpink' : 'orange'} />
-    </mesh>
-  )
+    <Html position={position} style={{ userSelect: 'none' }} transform>
+      <div contentEditable style={{width: "50px",height: "50px" }}>
+        {content}
+      </div>
+    </Html>
+  );
+
+
 }
+
+
+const InvisibleMesh = forwardRef(({ position }, ref) => {
+  useEffect(() => {
+    console.log('InvisibleMesh Position:', position);
+  }, [position]);
+
+  return (
+    <mesh ref={ref} position={position}>
+      <boxGeometry args={[2, 2, 0.1]} />
+      <meshPhongMaterial transparent opacity={0.15} color="#111111" />
+    </mesh>
+  );
+});
+
+function DraggableHtmlObject({ initialPosition, content }) {
+  const meshRef = useRef();
+  const objects = [meshRef.current].filter(Boolean);
+
+  //const objects = useMemo(() => [meshRef.current].filter(Boolean), [meshRef.current]);
+  const [x, setX] = useState(initialPosition[0]);
+  const [y, setY] = useState(initialPosition[1]);
+  const [z, setZ] = useState(initialPosition[2]);
+
+  const setPosition = useCallback(([newX, newY, newZ]) => {
+    setX(newX);
+    setY(newY);
+    setZ(newZ);
+  }, []);
+
+  const position = useMemo(() => [x, y, z], [x, y, z]); 
+  
+  useDraggable(objects, setPosition);
+
+  useEffect(()=>{
+
+    console.log('position:', position);
+  },[x,y,z])
+
+  // const ret = useDraggable(objects);
+
+  // console.log('Draggable', ret)
+  return (
+    <>
+      <EditableHtmlElement position={[x,y,z]} content={content} />
+      <InvisibleMesh ref={meshRef} position={initialPosition} />
+    </>
+  );
+}
+
 
 function ControlUI(props) {
   const handleDragButton = () => {
@@ -89,28 +113,7 @@ function ControlUI(props) {
   )
 }
 
-// function App() {
-//   const [dragFlag, setDragFlag] = useState(false)
 
-//   useEffect(() => {
-//     console.log('dragFlag', dragFlag)
-//   }, [dragFlag])
-
-//   return (
-//     <div>
-//       <Canvas>
-//         <ambientLight intensity={Math.PI / 2} />
-//         <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
-//         <pointLight position={[-10, -10, -10]} decay={0} intensity={Math.PI} />
-//         <Box position={[-1.2, 0, 0]} />
-//         <Box position={[1.2, 0, 0]} />
-//         <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
-//         <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />
-//       </Canvas>
-//       <ControlUI setDragFlag={setDragFlag} />
-//     </div>
-//   )
-// }
 
 function App() {
 
@@ -124,8 +127,18 @@ function App() {
       <ambientLight intensity={0.5} />
       <DraggableScene position={[0, 0, 0]} />
       <DraggableScene position={[1, 2, 3]} />
+      <DraggableHtmlObject initialPosition={[2, 2, 2]}  content="Edit me!" />
+      <DraggableHtmlObject initialPosition={[0, 0, 0]}  content="Another editable div!" />
       <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
+      {/* <OrbitControls enablePan={false} enableRotate={false} enableZoom={false} /> */}
+      
       <gridHelper args={[20, 20]} position={[0, -0.5, 0]} />
+      {/* <Html style={{ userSelect: 'none' }} castShadow receiveShadow occlude="blending" transform>
+        <div contentEditable style={{ width: '300px', height: '200px' }} spellCheck={false}>
+          write me
+        </div>
+      </Html> */}
+      <Environment preset="city" />
     </Canvas>
     </div>
   );
