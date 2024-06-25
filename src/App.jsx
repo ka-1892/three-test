@@ -3,6 +3,42 @@ import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { DragControls } from 'three/examples/jsm/controls/DragControls';
 import { Environment, useGLTF, ContactShadows, OrbitControls, Html } from '@react-three/drei';
 import { useDraggable } from './useDraggable';
+import html2canvas from 'html2canvas';
+import * as THREE from 'three';
+
+const htmlToTexture = async (html) => {
+  const canvas = await html2canvas(html);
+  const texture = new THREE.Texture(canvas);
+  texture.needsUpdate = true;
+  return texture;
+};
+
+
+function HTMLTexture({ htmlContent, position }) {
+  const meshRef = useRef();
+  const [texture, setTexture] = useState();
+
+  useEffect(() => {
+    const div = document.createElement('div');
+    div.innerHTML = htmlContent;
+    div.style.width = '200px';  // Set width and height as needed
+    div.style.height = '200px';
+    document.body.appendChild(div);  // Append temporarily to the body to render
+
+    htmlToTexture(div).then((tex) => {
+      setTexture(tex);
+      document.body.removeChild(div);  // Clean up
+    });
+  }, [htmlContent]);
+
+  return (
+    <mesh ref={meshRef} position={position}>
+      {/*https://stackoverflow.com/questions/76790629/planebuffergeometry-is-not-part-of-the-three-namespace */}
+      <planeGeometry attach="geometry" args={[2, 2]} />
+      <meshBasicMaterial attach="material" map={texture} />
+    </mesh>
+  );
+}
 
 
 function DraggableScene(props) {
@@ -58,7 +94,7 @@ const InvisibleMesh = forwardRef(({ position }, ref) => {
   return (
     <mesh ref={ref} position={position}>
       <boxGeometry args={[2, 2, 0.1]} />
-      <meshPhongMaterial transparent opacity={0.15} color="#111111" />
+      <meshPhongMaterial transparent opacity={1} color="tomato" />
     </mesh>
   );
 });
@@ -130,6 +166,7 @@ function App() {
       <DraggableScene position={[1, 2, 3]} />
       <DraggableHtmlObject initialPosition={[2, 2, 2]}  content="Edit me!" />
       <DraggableHtmlObject initialPosition={[0, 0, 0]}  content="Another editable div!" />
+      <HTMLTexture htmlContent="<div style='color: red;'>Edit me!</div>" position={[4, 4, 4]} />
       <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />
       {/* <OrbitControls enablePan={false} enableRotate={false} enableZoom={false} /> */}
       
