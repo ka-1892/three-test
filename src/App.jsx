@@ -65,20 +65,21 @@ const InvisibleMesh = forwardRef(({ position }, ref) => {
 
 function DraggableHtmlObject({ initialPosition, content }) {
   const meshRef = useRef();
-  const objects = [meshRef.current].filter(Boolean);
+  //const objects = [meshRef.current].filter(Boolean);
 
-  //const objects = useMemo(() => [meshRef.current].filter(Boolean), [meshRef.current]);
+  const objects = useMemo(() => [meshRef.current].filter(Boolean), [meshRef.current]);
   const [x, setX] = useState(initialPosition[0]);
   const [y, setY] = useState(initialPosition[1]);
   const [z, setZ] = useState(initialPosition[2]);
 
-  const setPosition = useCallback(([newX, newY, newZ]) => {
+  const setPosition = ([newX, newY, newZ]) => {
     setX(newX);
     setY(newY);
     setZ(newZ);
-  }, []);
+  };
 
-  const position = useMemo(() => [x, y, z], [x, y, z]); 
+  //const position = useMemo(() => [x, y, z], [x, y, z]); 
+  const position = () => ([x, y, z], [x, y, z]); 
   
   useDraggable(objects, setPosition);
 
