@@ -38,22 +38,28 @@ function HTMLTexture({ htmlContent, position }) {
    
     div.innerHTML = htmlContent;
     console.log("Texture htmlContent:", htmlContent);
-    div.style.width = '200px';  // Set width and height as needed
-    div.style.height = '200px';
+    div.style.width = '500px';  // Set width and height as needed
+    div.style.height = '300px';
+    div.style.fontSize = '50px';
+    div.style.fontWeight = '800';
     document.body.appendChild(div);  // Append temporarily to the body to render
 
     htmlToTexture(div).then((tex) => {
       setTexture(tex);
-      div.style.display = 'none';
+      //div.style.display = 'transparent';
       setUpdateKey(prev => prev + 1);
       document.body.removeChild(div);  // Clean up
     });
   }, [htmlContent]);
 
 
+  const handleHtmlClick = (e) => {
+   e.preventDefault();
+   console.log("content clicked at HTMLTexture")
+  }
 
   return (
-    <mesh key={updateKey} ref={meshRef} position={position}>
+    <mesh key={updateKey} ref={meshRef} position={position} onClick={handleHtmlClick}>
       {/*https://stackoverflow.com/questions/76790629/planebuffergeometry-is-not-part-of-the-three-namespace */}
       <planeGeometry attach="geometry" args={[2, 2]} />
       <meshBasicMaterial attach="material" map={texture} />
@@ -91,19 +97,64 @@ function DraggableScene(props) {
   );
 }
 
-const EditableHtmlElement = ({ position, content, toggleEditing }) => {
+const EditableHtmlElement = ({ position, content, isEditing, toggleEditing, setInnerHtmlContent }) => {
 
+  const divRef = useRef();
+  const isFirstRender = useRef(undefined);
+  const [htmlInstance, setHtmlInstance] = useState(null);
 
   const handleHtmlClick = () =>{
      console.log("content clicked at", content)
-     toggleEditing();
+     //toggleEditing();
   }
   
+  const contentChange = (e) =>{
+     console.log("content changed", divRef.current.innerHTML, divRef.current);
+     //const outerHtml = '<div>Yes</div>'; //styling, such as giving font size does not work. styling should be done in creating div inside HTMLTexture function
+
+     let frontalHmtl = '<div id="content">';
+     const rearHtml = '</div>';
+
+     let changedHtml = frontalHmtl.concat(divRef.current.innerHTML, rearHtml);
+     console.log("frontalHmtl", changedHtml);
+
+     if(isEditing){
+      setInnerHtmlContent(changedHtml);
+      setHtmlInstance(divRef.current.childNodes);
+      //updateHtmlContent(divRef.current.childNodes);
+     }
+     
+  }
+
+  useEffect(()=>{
+
+    console.log("isEditing:", isEditing);
+    if(isFirstRender.current === undefined){
+      isFirstRender.current = true;
+    }
+
+
+  },[isEditing])
+
+  useEffect(() => {
+
+    if(htmlInstance){
+      console.log("htmlInstance:", htmlInstance);
+    }
+
+  }, [htmlInstance]);
+
+  // const updateHtmlContent = useCallback((newlyIntance)=>{
+  //   setHtmlInstance(newlyIntance)
+  // },[])
+
 
   return (
     <Html position={position} style={{ userSelect: 'none' }} transform>
-      <div onClick={handleHtmlClick}  contentEditable style={{width: "50px",height: "50px" }}>
-        {content}
+      <div  id="content_edit_div" ref={divRef} onInput={contentChange}   onClick={handleHtmlClick}  
+      spellCheck={false}
+      contentEditable={true} style={{width: "200px",height: "100px", fontSize: "10px" }}>
+        {!htmlInstance ? content : htmlInstance}
       </div>
     </Html>
   );
@@ -123,14 +174,15 @@ const InvisibleMesh = forwardRef(({ position, toggleEditing }, ref) => {
     console.log("context menu", e.target.content)
   }
 
-  const handleHtmlClick = () =>{
+  const handleHtmlClick = (e) =>{
+    //e.preventDefault();
     console.log("content clicked at InvisibleMesh")
     toggleEditing();
  }
 
   return (
-    <mesh ref={ref} position={position} onContextMenu={handlecontextMenu} onClick={handleHtmlClick}>
-      <boxGeometry args={[2, 2, 0.1]} />
+    <mesh ref={ref} position={position} onContextMenu={handlecontextMenu} onClick={handleHtmlClick} >
+      <boxGeometry args={[6, 3, 0.1]} />
       <meshPhongMaterial transparent opacity={1} color="tomato" />
     </mesh>
   );
@@ -140,7 +192,9 @@ function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
   const meshRef = useRef();
   //const objects = [meshRef.current].filter(Boolean);
 
-  const [isEditing, setIsEditing] = useState(true);
+  const [isEditing, setIsEditing] = useState(false);
+  const [innerHtmlContent, setInnerHtmlContent] = useState(content);
+  
 
   const objects = useMemo(() => [meshRef.current].filter(Boolean), [meshRef.current]);
   const [x, setX] = useState(initialPosition[0]);
@@ -173,6 +227,12 @@ function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
     console.log('isEditing:', isEditing);
   },[isEditing])
 
+
+  useEffect(()=>{
+
+    setInnerHtmlContent(content);
+  },[])
+
   // const ret = useDraggable(objects);
   const toggleEditing = () => setIsEditing(!isEditing); 
   
@@ -181,9 +241,10 @@ function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
   return (
     <>
       {isEditing ? (
-        <EditableHtmlElement  key="editable" position={[x, y, z]} content={content} toggleEditing={toggleEditing} />
+        <EditableHtmlElement  key="editable" position={[x, y, z]} 
+        content={content} isEditing={isEditing}  toggleEditing={toggleEditing} setInnerHtmlContent={setInnerHtmlContent}/>
       ) : (
-        <HTMLTexture  key="texture"  htmlContent="<div style='color: red; font-size: 40px;'>Hello, edit me!</div>" position={[x, y, z + 0.1]} />
+        <HTMLTexture  key="texture"  htmlContent={innerHtmlContent} position={[x, y, z + 0.1]} />
       )}
       <InvisibleMesh ref={meshRef} position={initialPosition} toggleEditing={toggleEditing}/>
     </>
@@ -220,8 +281,8 @@ function App() {
     <Canvas>
       <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
       <ambientLight intensity={0.5} />
-      <DraggableScene position={[0, 0, 0]} />
-      <DraggableScene position={[1, 2, 3]} />
+      {/* <DraggableScene position={[0, 0, 0]} />
+      <DraggableScene position={[1, 2, 3]} /> */}
       <DraggableHtmlObject dragFlag={dragFlag} initialPosition={[2, 2, 2]}  content="Edit me!" />
       {/* <DraggableHtmlObject dragFlag={dragFlag} initialPosition={[0, 0, 0]}  content="Another editable div!" /> */}
       <HTMLTexture htmlContent="<div style='color: red; font-size: 40px;'> Hello hello me!</div>" position={[4, 4, 4]} />
