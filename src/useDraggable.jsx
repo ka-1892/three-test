@@ -5,13 +5,17 @@ import { DragControls } from 'three/examples/jsm/controls/DragControls';
 
 
 
-export function useDraggable(objects, setPosition) {
+export function useDraggable(objects, setPosition, isDraggable) {
   const { camera, gl } = useThree();
   const controlsRef = useRef();
 
   useEffect(() => {
     if (typeof setPosition !== 'function') {
       console.error('setPosition must be a function');
+      return;
+    }
+    if (!objects || objects.length === 0) {
+      console.error("No objects to attach draggable controls to.");
       return;
     }
 
@@ -31,6 +35,10 @@ export function useDraggable(objects, setPosition) {
       console.log('Drag ended')
     );
 
+    controls.addEventListener('contextmenu',()=>{
+      console.log("context menu");
+    });
+
     return () => {
       console.log("removing events")
       controls.removeEventListener('drag');
@@ -39,7 +47,7 @@ export function useDraggable(objects, setPosition) {
       controls.dispose();
     };
 
-  }, [objects, camera, gl]); 
+  }, [objects, camera, gl, isDraggable]); 
 
   return controlsRef;
 }
