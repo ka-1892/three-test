@@ -61,7 +61,7 @@ function HTMLTexture({ htmlContent, position }) {
   return (
     <mesh key={updateKey} ref={meshRef} position={position} onClick={handleHtmlClick}>
       {/*https://stackoverflow.com/questions/76790629/planebuffergeometry-is-not-part-of-the-three-namespace */}
-      <planeGeometry attach="geometry" args={[2, 2]} />
+      <planeGeometry attach="geometry" args={[4.5, 2]} />
       <meshBasicMaterial attach="material" map={texture} />
     </mesh>
   );
@@ -97,11 +97,12 @@ function DraggableScene(props) {
   );
 }
 
-const EditableHtmlElement = ({ position, content, isEditing, toggleEditing, setInnerHtmlContent }) => {
+const EditableHtmlElement = ({ position, content, contentEditFlag, setInnerHtmlContent, setcontentEditFlag}) => {
 
   const divRef = useRef();
-  const isFirstRender = useRef(undefined);
+  const htmlInstanceRef = useRef(null);
   const [htmlInstance, setHtmlInstance] = useState(null);
+
 
   const handleHtmlClick = () =>{
      console.log("content clicked at", content)
@@ -112,37 +113,50 @@ const EditableHtmlElement = ({ position, content, isEditing, toggleEditing, setI
      console.log("content changed", divRef.current.innerHTML, divRef.current);
      //const outerHtml = '<div>Yes</div>'; //styling, such as giving font size does not work. styling should be done in creating div inside HTMLTexture function
 
-     let frontalHmtl = '<div id="content">';
-     const rearHtml = '</div>';
-
-     let changedHtml = frontalHmtl.concat(divRef.current.innerHTML, rearHtml);
-     console.log("frontalHmtl", changedHtml);
-
-     if(isEditing){
-      setInnerHtmlContent(changedHtml);
-      setHtmlInstance(divRef.current.childNodes);
-      //updateHtmlContent(divRef.current.childNodes);
-     }
-     
   }
 
   useEffect(()=>{
+    console.log("contentEditFlag in EditableHtmlElement:", contentEditFlag);
 
-    console.log("isEditing:", isEditing);
-    if(isFirstRender.current === undefined){
-      isFirstRender.current = true;
+    if(contentEditFlag){
+      let frontalHmtl = '<div id="content">';
+      const rearHtml = '</div>';
+      let changedHtml = frontalHmtl.concat(divRef.current.innerHTML, rearHtml);
+  
+      //to give the changed content to DraggableHtmlObject for updating the texture
+      setInnerHtmlContent(changedHtml); 
+      htmlInstanceRef.current = divRef.current.childNodes;
+      //setHtmlInstance(divRef.current.childNodes);
+      setCallInnerHtmlContent(divRef.current.childNodes);
     }
 
+    setcontentEditFlag(false);
+  },[contentEditFlag])
 
-  },[isEditing])
+  const setCallInnerHtmlContent = (childNodes) =>{
+
+    useCallback(()=>{
+      setHtmlInstance(childNodes)
+    },[])
+  } 
 
   useEffect(() => {
 
     if(htmlInstance){
       console.log("htmlInstance:", htmlInstance);
+      
     }
 
   }, [htmlInstance]);
+
+  useEffect(() => {
+
+    if(htmlInstance){
+      console.log("htmlInstance:", htmlInstance);
+      console.log("htmlInstanceRef", htmlInstanceRef.current);
+    }
+
+  }, []);
 
   // const updateHtmlContent = useCallback((newlyIntance)=>{
   //   setHtmlInstance(newlyIntance)
@@ -154,7 +168,7 @@ const EditableHtmlElement = ({ position, content, isEditing, toggleEditing, setI
       <div  id="content_edit_div" ref={divRef} onInput={contentChange}   onClick={handleHtmlClick}  
       spellCheck={false}
       contentEditable={true} style={{width: "200px",height: "100px", fontSize: "10px" }}>
-        {!htmlInstance ? content : htmlInstance}
+        {htmlInstance ? content : htmlInstanceRef.current}
       </div>
     </Html>
   );
@@ -188,7 +202,7 @@ const InvisibleMesh = forwardRef(({ position, toggleEditing }, ref) => {
   );
 });
 
-function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
+function DraggableHtmlObject({ initialPosition, content, dragFlag,contentEditFlag, setcontentEditFlag }) {
   const meshRef = useRef();
   //const objects = [meshRef.current].filter(Boolean);
 
@@ -219,17 +233,17 @@ function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
 
   useEffect(()=>{
 
-    console.log('position:', position);
-  },[x,y,z])
+    console.log('innerHtmlContent in DraggableHtmlObject:', innerHtmlContent);
+  },[innerHtmlContent])
 
   useEffect(()=>{
 
-    console.log('isEditing:', isEditing);
+    console.log('isEditing in DraggableObject:', isEditing);
   },[isEditing])
 
 
-  useEffect(()=>{
 
+  useCallback(()=>{
     setInnerHtmlContent(content);
   },[])
 
@@ -242,7 +256,9 @@ function DraggableHtmlObject({ initialPosition, content, dragFlag }) {
     <>
       {isEditing ? (
         <EditableHtmlElement  key="editable" position={[x, y, z]} 
-        content={content} isEditing={isEditing}  toggleEditing={toggleEditing} setInnerHtmlContent={setInnerHtmlContent}/>
+        content={content} contentEditFlag={contentEditFlag}  
+        setcontentEditFlag={setcontentEditFlag}
+        toggleEditing={toggleEditing} setInnerHtmlContent={setInnerHtmlContent}/>
       ) : (
         <HTMLTexture  key="texture"  htmlContent={innerHtmlContent} position={[x, y, z + 0.1]} />
       )}
@@ -258,10 +274,15 @@ function ControlUI(props) {
     props.setDragFlag((prev) => !prev)
   }
 
+  const handleEditButton = () => {
+    console.log('content edit button');
+    props.setcontentEditFlag((prev) => !prev)
+  }
+
   return (
     <div className="controlPanel">
-      <button onClick={handleDragButton}> drag </button>
-      <button> other</button>
+      <button onClick={handleDragButton}> Drag </button>
+      <button onClick={handleEditButton}> Edit</button>
     </div>
   )
 }
@@ -271,19 +292,23 @@ function ControlUI(props) {
 function App() {
 
   const [dragFlag, setDragFlag] = useState(false)
-
+  const [contentEditFlag, setcontentEditFlag] = useState(false)
 
  
+  useEffect(()=>{
+
+    console.log('contentEditFlag', contentEditFlag);
+  },[contentEditFlag])
 
   return (
     <div>
-      <ControlUI setDragFlag={setDragFlag} />
+      <ControlUI setDragFlag={setDragFlag} setcontentEditFlag={setcontentEditFlag}/>
     <Canvas>
       <spotLight position={[10, 10, 10]} angle={0.15} penumbra={1} decay={0} intensity={Math.PI} />
       <ambientLight intensity={0.5} />
       {/* <DraggableScene position={[0, 0, 0]} />
       <DraggableScene position={[1, 2, 3]} /> */}
-      <DraggableHtmlObject dragFlag={dragFlag} initialPosition={[2, 2, 2]}  content="Edit me!" />
+      <DraggableHtmlObject dragFlag={dragFlag} contentEditFlag={contentEditFlag} setcontentEditFlag={setcontentEditFlag} initialPosition={[2, 2, 2]}  content="Edit me!" />
       {/* <DraggableHtmlObject dragFlag={dragFlag} initialPosition={[0, 0, 0]}  content="Another editable div!" /> */}
       <HTMLTexture htmlContent="<div style='color: red; font-size: 40px;'> Hello hello me!</div>" position={[4, 4, 4]} />
       <OrbitControls enablePan={dragFlag} enableRotate={dragFlag} />      
