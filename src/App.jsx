@@ -40,7 +40,7 @@ function HTMLTexture({ htmlContent, position }) {
     console.log("Texture htmlContent:", htmlContent);
     div.style.width = '500px';  // Set width and height as needed
     div.style.height = '300px';
-    div.style.fontSize = '50px';
+    div.style.fontSize = '23px';
     div.style.fontWeight = '800';
     document.body.appendChild(div);  // Append temporarily to the body to render
 
@@ -61,7 +61,7 @@ function HTMLTexture({ htmlContent, position }) {
   return (
     <mesh key={updateKey} ref={meshRef} position={position} onClick={handleHtmlClick}>
       {/*https://stackoverflow.com/questions/76790629/planebuffergeometry-is-not-part-of-the-three-namespace */}
-      <planeGeometry attach="geometry" args={[4.5, 2]} />
+      <planeGeometry attach="geometry" args={[5.5, 2.5]} />
       <meshBasicMaterial attach="material" map={texture} />
     </mesh>
   );
@@ -100,50 +100,59 @@ function DraggableScene(props) {
 const EditableHtmlElement = ({ position, content, contentEditFlag, setInnerHtmlContent, setcontentEditFlag}) => {
 
   const divRef = useRef();
-  const htmlInstanceRef = useRef(null);
+  //const htmlInstanceRef = useRef(null);
   const [htmlInstance, setHtmlInstance] = useState(null);
+  const [htmlContent, setHtmlContent] = useState("");
 
+
+  const updateHtmlInstance = useCallback(() => {
+    setHtmlInstance(divRef.current.childNodes);
+  }, [divRef]);
 
   const handleHtmlClick = () =>{
-     console.log("content clicked at", content)
-     //toggleEditing();
-  }
-  
-  const contentChange = (e) =>{
-     console.log("content changed", divRef.current.innerHTML, divRef.current);
-     //const outerHtml = '<div>Yes</div>'; //styling, such as giving font size does not work. styling should be done in creating div inside HTMLTexture function
+    //console.log("content clicked at", content)
+    //toggleEditing();
+ }
 
-  }
+  // useEffect(() => {
+  //   if (contentEditFlag) {
+  //     const frontalHtml = '<div id="content">';
+  //     const rearHtml = '</div>';
+  //     const changedHtml = frontalHtml.concat(divRef.current.innerHTML, rearHtml);
 
-  useEffect(()=>{
-    console.log("contentEditFlag in EditableHtmlElement:", contentEditFlag);
+  //     setInnerHtmlContent(changedHtml);  // Updating the inner HTML content
+  //     htmlInstanceRef.current = divRef.current.childNodes;
+      
+  //     // Execute the callback conditionally
+  //     updateHtmlInstance();
+      
+  //     setcontentEditFlag(false);  // Reset the flag
+  //   }
+  // }, [contentEditFlag, setInnerHtmlContent, setcontentEditFlag, updateHtmlInstance]);
 
-    if(contentEditFlag){
-      let frontalHmtl = '<div id="content">';
-      const rearHtml = '</div>';
-      let changedHtml = frontalHmtl.concat(divRef.current.innerHTML, rearHtml);
-  
-      //to give the changed content to DraggableHtmlObject for updating the texture
-      setInnerHtmlContent(changedHtml); 
-      htmlInstanceRef.current = divRef.current.childNodes;
-      //setHtmlInstance(divRef.current.childNodes);
-      setCallInnerHtmlContent(divRef.current.childNodes);
+  useEffect(() => {
+    // Convert NodeList to a string or a React element array when contentEditFlag is toggled
+    if (contentEditFlag && divRef.current) {
+      const html = Array.from(divRef.current.childNodes).map((node) => {
+        if (node.nodeType === Node.TEXT_NODE) {
+          return node.textContent ;
+        } else if (node.nodeType === Node.ELEMENT_NODE) {
+          return <span key={node.textContent} style={{ backgroundColor: node.style.backgroundColor }}>{node.textContent}</span>;
+        }
+        return null;
+      });
+
+      const fullHtml = `<div>${html}</div>`;
+      setInnerHtmlContent(fullHtml);  // Updating the inner HTML content
+      setHtmlContent(html);  // Set the processed HTML for rendering
+      setcontentEditFlag(false);  // Reset the flag
     }
-
-    setcontentEditFlag(false);
-  },[contentEditFlag])
-
-  const setCallInnerHtmlContent = (childNodes) =>{
-
-    useCallback(()=>{
-      setHtmlInstance(childNodes)
-    },[])
-  } 
+  }, [contentEditFlag, setInnerHtmlContent, setcontentEditFlag]);
 
   useEffect(() => {
 
     if(htmlInstance){
-      console.log("htmlInstance:", htmlInstance);
+      console.log("htmlInstance in [htmlInstance]: ", htmlInstance);
       
     }
 
@@ -153,7 +162,7 @@ const EditableHtmlElement = ({ position, content, contentEditFlag, setInnerHtmlC
 
     if(htmlInstance){
       console.log("htmlInstance:", htmlInstance);
-      console.log("htmlInstanceRef", htmlInstanceRef.current);
+      //console.log("htmlInstanceRef", htmlInstanceRef.current);
     }
 
   }, []);
@@ -165,10 +174,11 @@ const EditableHtmlElement = ({ position, content, contentEditFlag, setInnerHtmlC
 
   return (
     <Html position={position} style={{ userSelect: 'none' }} transform>
-      <div  id="content_edit_div" ref={divRef} onInput={contentChange}   onClick={handleHtmlClick}  
+      <div  id="content_edit_div" ref={divRef}   onClick={handleHtmlClick}  
       spellCheck={false}
       contentEditable={true} style={{width: "200px",height: "100px", fontSize: "10px" }}>
-        {htmlInstance ? content : htmlInstanceRef.current}
+        {/* {htmlInstance ? htmlInstance : content} */}
+        {htmlContent.length > 0 ? htmlContent : content}
       </div>
     </Html>
   );
